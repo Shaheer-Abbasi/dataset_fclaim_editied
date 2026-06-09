@@ -33,9 +33,9 @@ Export CIFAR100 as a dataset dir in './data/cifar100':
 python3 export_raw_data.py --dataset 'CIFAR100' --saved_path './data/cifar100'
 ```
 
-Export TinyImageNet as a dataset dir in './data/tinyimagenet':
+Export TinyImageNet as a dataset dir in './data/tiny':
 ```
-python3 export_raw_data.py --dataset 'TinyImageNet' --data_path './tiny-imagenet-200' --saved_path './data/tinyimagenet'
+python3 export_raw_data.py --dataset 'TinyImageNet' --data_path './tiny-imagenet-200' --saved_path './data/tiny'
 ```
 
 ## split data into two halves
