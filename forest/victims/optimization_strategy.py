@@ -45,7 +45,7 @@ class Strategy:
             self.augmentations = args.data_aug
         if any(net in model_name.lower() for net in BRITTLE_NETS):
             self.lr *= 0.1
-        if args.regularization is not None:
+        if getattr(args, 'regularization', None) is not None:
             self.weight_decay = args.regularization
 
 @dataclass

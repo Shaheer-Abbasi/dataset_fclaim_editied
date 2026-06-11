@@ -198,10 +198,11 @@ if __name__ == "__main__":
             if not os.path.exists(args.target_path + i):
                 os.mkdir(args.target_path + i)
 
-            target_list = random.sample(os.listdir('./data/tiny/train/' + i), len(os.listdir('./data/tiny/train/' + i)) // 2)
-            for j in os.listdir('./data/tiny/train/' + i):
+            src_dir = './data/tiny/train/' + i + '/images'
+            target_list = random.sample(os.listdir(src_dir), len(os.listdir(src_dir)) // 2)
+            for j in os.listdir(src_dir):
                 if j in target_list:
-                    shutil.copy('./data/tiny/train/' + i + '/' + j, args.target_path + i + '/' + j)
+                    shutil.copy(src_dir + '/' + j, args.target_path + i + '/' + j)
 
 
     print('-------------Job finished.-------------------------')

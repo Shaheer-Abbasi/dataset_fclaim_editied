@@ -69,7 +69,7 @@ def get_parser():
     # Files and folders
     parser.add_argument('--name', default='', type=str, help='Name tag for the result table and possibly for export folders.')
     parser.add_argument('--table_path', default='brew_poison/tables/', type=str)
-    parser.add_argument('--data_path', default='./data/data/tiny-imagenet-200/', type=str)
+    parser.add_argument('--data_path', default='./data/tiny/', type=str)
     parser.add_argument('--img_path', type=str, default='./data/tiny/train/')
     parser.add_argument('--published_path', type=str, default='./data/tiny/')
     ###########################################################################

@@ -409,8 +409,8 @@ if __name__ == "__main__":
 
         print('============ {} ============='.format(args.exp_index))
         # data path for training target model and surrogate model
-        args.target_path = '/usr/project/xtmp/zh127/cifar100/MembershipTracker(target)({})/'.format(args.exp_index)
-        args.surrogate_path = '/usr/project/xtmp/zh127/cifar100/MembershipTracker(surrogate)({})({})({})/'.format(args.mark_budget, args.alpha, args.exp_index)
+        args.target_path = './data/cifar100/MembershipTracker(target)({})/'.format(args.exp_index)
+        args.surrogate_path = './data/cifar100/MembershipTracker(surrogate)({})({})({})/'.format(args.mark_budget, args.alpha, args.exp_index)
 
         if os.path.exists(args.target_path):
                 shutil.rmtree(args.target_path)
@@ -434,12 +434,12 @@ if __name__ == "__main__":
             if not os.path.exists(args.surrogate_path + i):
                 os.mkdir(args.surrogate_path + i)
 
-            target_list = random.sample(os.listdir('/usr/project/xtmp/zh127/cifar100/train/' + i), len(os.listdir('/usr/project/xtmp/zh127/cifar100/train/' + i)) // 2)
-            for j in os.listdir('/usr/project/xtmp/zh127/cifar100/train/' + i):
+            target_list = random.sample(os.listdir('./data/cifar100/train/' + i), len(os.listdir('./data/cifar100/train/' + i)) // 2)
+            for j in os.listdir('./data/cifar100/train/' + i):
                 if j in target_list:
-                    shutil.copy('/usr/project/xtmp/zh127/cifar100/train/' + i + '/' + j, args.target_path + i + '/' + j)
+                    shutil.copy('./data/cifar100/train/' + i + '/' + j, args.target_path + i + '/' + j)
                 else:
-                    shutil.copy('/usr/project/xtmp/zh127/cifar100/train/' + i + '/' + j, args.surrogate_path + i + '/' + j)
+                    shutil.copy('./data/cifar100/train/' + i + '/' + j, args.surrogate_path + i + '/' + j)
 
 
     print('-------------Job finished.-------------------------')

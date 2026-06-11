@@ -186,7 +186,7 @@ if __name__ == "__main__":
     args.data_transform = data.trainset.transform
     args.data_augmentation = data.augment
 
-    args.target_path = './data/cifar100/target({})/'.format(args.exp_index)
+    args.target_path = './data/cifar100/MembershipTracker(target)({})/'.format(args.exp_index)
     
     # train target model
     model = forest.Victim(args, setup=setup)
