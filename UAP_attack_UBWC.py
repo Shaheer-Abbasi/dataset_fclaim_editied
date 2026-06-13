@@ -144,14 +144,31 @@ def _load_surrogate_and_source_images(attack_list, args):
     source_class = max(attack_list_dir, key=attack_list_dir.get)
     print(f'Source class: {source_class}')
 
-    base_model, _, _ = open_clip.create_model_and_transforms(
-        'ViT-B-16', pretrained='datacomp_xl_s13b_b90k',
-        device='cuda:0', cache_dir='./data/model/'
-    )
+    os.makedirs('./data/model/', exist_ok=True)
+    pretrained_candidates = ['datacomp_xl_s13b_b90k', 'openai']
+    last_err = None
+    base_model = None
+    for pretrained in pretrained_candidates:
+        try:
+            try:
+                base_model, _, _ = open_clip.create_model_and_transforms(
+                    'ViT-B-16', pretrained=pretrained,
+                    device='cuda:0', cache_dir='./data/model/'
+                )
+            except TypeError:
+                base_model, _, _ = open_clip.create_model_and_transforms(
+                    'ViT-B-16', pretrained=pretrained, device='cuda:0'
+                )
+            print(f'Loaded CLIP ViT-B-16 ({pretrained})')
+            break
+        except RuntimeError as e:
+            last_err = e
+    if base_model is None:
+        raise last_err
     clip_encode = base_model.encode_image
     for p in base_model.parameters():
         p.requires_grad = False
-    clip_encode.eval()
+    base_model.eval()
 
     processor = transforms.Compose([
         transforms.Normalize(mean=(0.48145466, 0.4578275, 0.40821073),
