@@ -35,6 +35,15 @@ from src.datasets.folder import default_loader
 from src.utils import bool_flag, get_optimizer, repeat_to
 import random
 
+import clip
+from PIL import Image
+from torchvision.models import resnet18
+from numpy import asarray
+import pickle
+from scipy import stats
+import math
+from collections import deque
+
 from scipy.stats import ttest_rel
 import mymodels
 
