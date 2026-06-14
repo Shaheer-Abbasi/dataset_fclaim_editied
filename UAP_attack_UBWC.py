@@ -258,20 +258,36 @@ def attack_PGD(attack_list, args):
     return source_class, trigger
 
 
-def _build_patch_trigger_and_mask(patch_img, patch_size, img_size=32):
-    """Place perlin patch at bottom-right of image"""
+def _patch_origin(img_size, patch_size, position='bottom_right'):
+    if position == 'center':
+        r0 = (img_size - patch_size) // 2
+        c0 = (img_size - patch_size) // 2
+    else:
+        r0 = img_size - patch_size
+        c0 = img_size - patch_size
+    return r0, c0
+
+
+def _build_patch_trigger_and_mask(patch_img, patch_size, img_size=32, position='bottom_right'):
+    """Place a Perlin patch on a full-size trigger canvas."""
     mask = np.zeros((img_size, img_size, 3), dtype=np.float32)
     trigger = np.zeros((img_size, img_size, 3), dtype=np.float32)
-    r0, c0 = img_size - patch_size, img_size - patch_size
+    r0, c0 = _patch_origin(img_size, patch_size, position)
+    r1, c1 = r0 + patch_size, c0 + patch_size
     patch_np = np.array(patch_img).astype(np.float32)
-    trigger[r0:img_size, c0:img_size, :] = patch_np
-    mask[r0:img_size, c0:img_size, :] = 1.0
+    trigger[r0:r1, c0:c1, :] = patch_np
+    mask[r0:r1, c0:c1, :] = 1.0
     return trigger, mask
 
 
-def attack_perlin(attack_list, args):
-    """Perlin patch UAP attack"""
+def _perturb_with_patch(batch, trigger_t, mask_t, paste=False, alpha=0.2):
+    if paste:
+        return ((1 - mask_t) * batch + mask_t * trigger_t).clamp(0, 1)
+    return ((1 - alpha * mask_t) * batch + alpha * mask_t * trigger_t).clamp(0, 1)
 
+
+def _search_perlin_patch(attack_list, args, position, paste):
+    """Screen Perlin candidates; blend or paste at the given patch position."""
     source_class, clip_encode, processor, to_tensor, source_images = \
         _load_surrogate_and_source_images(attack_list, args)
 
@@ -281,16 +297,19 @@ def attack_perlin(attack_list, args):
     patch_size = getattr(args, 'patch_size', 8)
     n_candidates = getattr(args, 'uap_perlin_candidates', 100)
 
-    print(f'  Patch size: {patch_size}x{patch_size} at bottom-right corner')
+    position_label = 'center' if position == 'center' else 'bottom-right corner'
+    mode_label = 'paste' if paste else f'blend (alpha={alpha})'
+    print(f'  Patch size: {patch_size}x{patch_size} at {position_label}, mode: {mode_label}')
 
     noises = [
         generate_noise_image((3, patch_size, patch_size))
         for _ in range(n_candidates)
     ]
 
+    r0, c0 = _patch_origin(img_size, patch_size, position)
+    r1, c1 = r0 + patch_size, c0 + patch_size
     mask_np = np.zeros((img_size, img_size, 3), dtype=np.float32)
-    r0, c0 = img_size - patch_size, img_size - patch_size
-    mask_np[r0:img_size, c0:img_size, :] = 1.0
+    mask_np[r0:r1, c0:c1, :] = 1.0
     mask_t = to_tensor(
         Image.fromarray((mask_np * 255).astype(np.uint8))
     ).unsqueeze(0).cuda()
@@ -301,7 +320,7 @@ def attack_perlin(attack_list, args):
 
     for noise_img in noises:
         trigger_np, candidate_mask = _build_patch_trigger_and_mask(
-            noise_img, patch_size, img_size
+            noise_img, patch_size, img_size, position=position
         )
         trigger_t = to_tensor(
             Image.fromarray(trigger_np.astype(np.uint8))
@@ -312,9 +331,9 @@ def attack_perlin(attack_list, args):
             for start in range(0, len(source_images), batch_size):
                 batch = source_images[start:start + batch_size]
                 clean_feat = clip_encode(processor(batch))
-                perturbed = (
-                    (1 - alpha * mask_t) * batch + alpha * mask_t * trigger_t
-                ).clamp(0, 1)
+                perturbed = _perturb_with_patch(
+                    batch, trigger_t, mask_t, paste=paste, alpha=alpha
+                )
                 pert_feat = clip_encode(processor(perturbed))
                 dis += torch.norm(clean_feat - pert_feat, dim=-1).sum().item()
 
@@ -329,7 +348,17 @@ def attack_perlin(attack_list, args):
     return source_class, trigger, best_mask_np
 
 
-def create_backdoor_testset(trigger, source_class, args, mask=None):
+def attack_perlin(attack_list, args):
+    """Perlin patch UAP: alpha-blended patch at bottom-right."""
+    return _search_perlin_patch(attack_list, args, position='bottom_right', paste=False)
+
+
+def attack_perlin_paste(attack_list, args):
+    """Perlin patch UAP: paste patch pixels at image center (x'[patch] = y)."""
+    return _search_perlin_patch(attack_list, args, position='center', paste=True)
+
+
+def create_backdoor_testset(trigger, source_class, args, mask=None, paste=False):
 
     shutil.copytree(args.test_path, args.backdoored_test_path, dirs_exist_ok=True) 
 
@@ -342,6 +371,8 @@ def create_backdoor_testset(trigger, source_class, args, mask=None):
         img = np.array(img).astype(np.float32)
         if mask is None:
             marked_image = (1 - alpha) * img + alpha * trigger
+        elif paste:
+            marked_image = (1 - mask) * img + mask * trigger
         else:
             marked_image = (1 - alpha * mask) * img + alpha * mask * trigger
         marked_image = np.clip(marked_image, 0, 255).astype(np.uint8)
@@ -364,7 +395,7 @@ def test(testloader, model, use_cuda=True):
     return np.array(return_output)
 
 
-def UWBC_test(trigger, SOURCE_CLASS, args, mask=None):
+def UWBC_test(trigger, SOURCE_CLASS, args, mask=None, paste=False):
 
     # load model
     ckpt = torch.load(args.target_path + 'target_model.pth')
@@ -382,7 +413,7 @@ def UWBC_test(trigger, SOURCE_CLASS, args, mask=None):
     clean_dataset.transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
                                                             torchvision.transforms.Normalize(args.data_mean, args.data_std)])
 
-    create_backdoor_testset(trigger, SOURCE_CLASS, args, mask=mask)
+    create_backdoor_testset(trigger, SOURCE_CLASS, args, mask=mask, paste=paste)
 
     posioned_dataset = torchvision.datasets.ImageFolder(root=args.backdoored_test_path, transform=transforms.ToTensor())
     posioned_dataset.transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
@@ -552,9 +583,10 @@ def get_parser():
 
     # UAP attack options
     parser.add_argument("--attack_method", default="pgd", type=str,
-                        choices=["pgd", "perlin_uap"],
-                        help="UAP attack variant: 'pgd' for full-image optimization, "
-                             "'perlin_uap' for localized Perlin patch at fixed corner")
+                        choices=["pgd", "perlin_uap", "perlin_uap_paste"],
+                        help="UAP attack variant: 'pgd' full-image optimization; "
+                             "'perlin_uap' blended patch bottom-right; "
+                             "'perlin_uap_paste' pasted patch at center")
     parser.add_argument("--uap_iters", default=200, type=int,
                         help="Number of PGD optimization iterations (pgd method)")
     parser.add_argument("--uap_lr", default=0.01, type=float,
@@ -565,6 +597,12 @@ def get_parser():
                         help="Number of Perlin patch candidates to screen (perlin_uap method)")
     parser.add_argument("--patch_size", default=8, type=int,
                         help="Side length of localized Perlin patch (perlin_uap method)")
+    parser.add_argument("--class_imbalances", default="2,3,4", type=str,
+                        help="Comma-separated class imbalance values to sweep (default: full grid)")
+    parser.add_argument("--list_sizes", default="1000,2000,5000,10000", type=str,
+                        help="Comma-separated false-claim list sizes to sweep (default: full grid)")
+    parser.add_argument("--num_trials", default=20, type=int,
+                        help="Trials per (class_imbalance, list_size) block")
 
     return parser
 
@@ -608,8 +646,11 @@ if __name__ == "__main__":
                 args.all_img_list.append((i, j))
 
 
-    for class_imbalance in [2, 3, 4]:
-        for list_size in [1000, 2000, 5000, 10000]:
+    class_imbalances = [int(x.strip()) for x in args.class_imbalances.split(',') if x.strip()]
+    list_sizes = [int(x.strip()) for x in args.list_sizes.split(',') if x.strip()]
+
+    for class_imbalance in class_imbalances:
+        for list_size in list_sizes:
             
             if True:
             # if not os.path.exists('./UBWC/results/false_detection_attack(no_model)({})({})({}).pickle'.format(class_imbalance, list_size, args.exp_index)):
@@ -617,7 +658,7 @@ if __name__ == "__main__":
 
                 results_all = 0
 
-                for _ in range(20):
+                for _ in range(args.num_trials):
 
                     if class_imbalance == 1:
                         attack_list = random.sample(args.all_img_list, list_size)
@@ -647,6 +688,9 @@ if __name__ == "__main__":
                     elif args.attack_method == 'perlin_uap':
                         source_class, trigger, mask = attack_perlin(attack_list, args)
                         results = UWBC_test(trigger, source_class, args, mask=mask)
+                    elif args.attack_method == 'perlin_uap_paste':
+                        source_class, trigger, mask = attack_perlin_paste(attack_list, args)
+                        results = UWBC_test(trigger, source_class, args, mask=mask, paste=True)
 
                     results_all += results
 
