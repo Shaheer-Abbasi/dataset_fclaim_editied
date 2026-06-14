@@ -136,6 +136,25 @@ def generate_noise_image(image_shape):
     return Image.fromarray(noise_uint8)
 
 
+def _is_image_file(name):
+    return name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.webp', '.tif', '.tiff'))
+
+
+def _list_image_files(directory):
+    return [f for f in os.listdir(directory)
+            if _is_image_file(f) and os.path.isfile(os.path.join(directory, f))]
+
+
+def _attack_class_names(args):
+    """Class folder names from the exported train split (not CIFAR root folders like train/)."""
+    names = []
+    for name in sorted(os.listdir(args.img_path)):
+        class_dir = os.path.join(args.img_path, name)
+        if os.path.isdir(class_dir) and _list_image_files(class_dir):
+            names.append(name)
+    return names
+
+
 def _load_surrogate_and_source_images(attack_list, args):
     """Each attack needs source class, CLIP surrogate, and source images"""
     attack_list_dir = {}
@@ -143,6 +162,11 @@ def _load_surrogate_and_source_images(attack_list, args):
         attack_list_dir[i] = attack_list_dir.get(i, 0) + 1
     source_class = max(attack_list_dir, key=attack_list_dir.get)
     print(f'Source class: {source_class}')
+    if source_class not in _attack_class_names(args):
+        raise ValueError(
+            f"Invalid source class '{source_class}'. "
+            f"Check --img_path (expected class subfolders like oak_tree/, not 'train')."
+        )
 
     os.makedirs('./data/model/', exist_ok=True)
     pretrained_candidates = ['datacomp_xl_s13b_b90k', 'openai']
@@ -180,7 +204,8 @@ def _load_surrogate_and_source_images(attack_list, args):
     source_images = []
     for cls, fname in attack_list:
         if cls == source_class:
-            img = to_tensor(Image.open(args.img_path + cls + '/' + fname)).unsqueeze(0).cuda()
+            img_path = os.path.join(args.img_path, cls, fname)
+            img = to_tensor(Image.open(img_path)).unsqueeze(0).cuda()
             source_images.append(img)
     source_images = torch.cat(source_images, dim=0)
 
@@ -360,13 +385,16 @@ def attack_perlin_paste(attack_list, args):
 
 def create_backdoor_testset(trigger, source_class, args, mask=None, paste=False):
 
-    shutil.copytree(args.test_path, args.backdoored_test_path, dirs_exist_ok=True) 
+    if os.path.exists(args.backdoored_test_path):
+        shutil.rmtree(args.backdoored_test_path)
+    shutil.copytree(args.test_path, args.backdoored_test_path)
 
     trigger = np.array(trigger).astype(np.float32)
     alpha = 0.2
+    source_dir = os.path.join(args.backdoored_test_path, source_class)
 
-    for j in os.listdir(args.backdoored_test_path + source_class):
-        img = Image.open(args.backdoored_test_path + source_class + '/' + j)
+    for fname in _list_image_files(source_dir):
+        img = Image.open(os.path.join(source_dir, fname))
       
         img = np.array(img).astype(np.float32)
         if mask is None:
@@ -377,7 +405,7 @@ def create_backdoor_testset(trigger, source_class, args, mask=None, paste=False)
             marked_image = (1 - alpha * mask) * img + alpha * mask * trigger
         marked_image = np.clip(marked_image, 0, 255).astype(np.uint8)
         marked_image = Image.fromarray(marked_image)
-        marked_image.save(args.backdoored_test_path + '/' + source_class + '/' + j)
+        marked_image.save(os.path.join(source_dir, fname))
     print('backdoored testset created.')
 
 
@@ -569,7 +597,7 @@ def get_parser():
 
     # detection
     parser.add_argument("--test_path", type=str, default='./data/cifar100/test/')
-    parser.add_argument("--backdoored_test_path", type=str, default='./data/cifar100/')
+    parser.add_argument("--backdoored_test_path", type=str, default='./data/cifar100/backdoored_test/')
 
     # Debugging:
     parser.add_argument('--dryrun', action='store_true')
@@ -635,15 +663,17 @@ if __name__ == "__main__":
     number_per_class = 250
 
     args.all_img_list = []
-    listing = args.classes
-    for i in listing:
+    listing = _attack_class_names(args)
+    for class_name in listing:
 
-        file_list1 = os.listdir(args.img_path + i)
-        file_list2 = os.listdir(args.target_path + i)
+        class_img_dir = os.path.join(args.img_path, class_name)
+        target_class_dir = os.path.join(args.target_path, class_name)
+        file_list1 = _list_image_files(class_img_dir)
+        file_list2 = set(_list_image_files(target_class_dir)) if os.path.isdir(target_class_dir) else set()
 
-        for j in file_list1:
-            if j not in file_list2:
-                args.all_img_list.append((i, j))
+        for fname in file_list1:
+            if fname not in file_list2:
+                args.all_img_list.append((class_name, fname))
 
 
     class_imbalances = [int(x.strip()) for x in args.class_imbalances.split(',') if x.strip()]
@@ -667,15 +697,20 @@ if __name__ == "__main__":
                         old = 0
                         # total_num = 0
                         attack_list = []
-                        classes = args.classes.copy()
+                        classes = listing.copy()
                         random.shuffle(classes)
                         for j in range(1, len(classes)+1):
                             cdf_value = beta.cdf(j/len(classes), class_imbalance, class_imbalance)
-                            sample_list1 = os.listdir(args.img_path + classes[j-1])
-                            sample_list2 = os.listdir(args.target_path + classes[j-1])
+                            class_name = classes[j-1]
+                            target_class_dir = os.path.join(args.target_path, class_name)
+                            sample_list1 = _list_image_files(os.path.join(args.img_path, class_name))
+                            sample_list2 = (
+                                set(_list_image_files(target_class_dir))
+                                if os.path.isdir(target_class_dir) else set()
+                            )
                             sample_list = [z for z in sample_list1 if z not in sample_list2]
                             attack_list_ = random.sample(sample_list, min(int((cdf_value-old)*list_size) + 1, number_per_class))
-                            attack_list__ = [(classes[j-1], z) for z in attack_list_]
+                            attack_list__ = [(class_name, z) for z in attack_list_]
                             attack_list += attack_list__
                             # args.num_per_class[args.classes[j-1]] = min(int((cdf_value-old)*list_size) + 1, number_per_class)
                             # total_num += min(int((cdf_value-old)*list_size) + 1, number_per_class)
