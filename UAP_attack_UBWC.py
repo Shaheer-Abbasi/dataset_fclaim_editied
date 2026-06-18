@@ -429,9 +429,7 @@ def attack_perlin_random(attack_list, args):
 
 def create_backdoor_testset(trigger, source_class, args, mask=None, paste=False):
 
-    if os.path.exists(args.backdoored_test_path):
-        shutil.rmtree(args.backdoored_test_path)
-    shutil.copytree(args.test_path, args.backdoored_test_path)
+    shutil.copytree(args.test_path, args.backdoored_test_path, dirs_exist_ok=True)
 
     trigger = np.array(trigger).astype(np.float32)
     alpha = 0.2
@@ -515,7 +513,7 @@ def UWBC_test(trigger, SOURCE_CLASS, args, mask=None, paste=False):
     clean_data_loader = torch.utils.data.DataLoader(clean_dataset, batch_size=1, drop_last=False, shuffle=False)
     poisoned_data_loader = torch.utils.data.DataLoader(poisoned_dataset, batch_size=1, drop_last=False, shuffle=False)
 
-    output_clean = test(clean_data_loader, target_model) 
+    output_clean = test(clean_data_loader, target_model)
     output_poisoned = test(poisoned_data_loader, target_model)
 
     print(np.mean(output_clean))
