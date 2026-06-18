@@ -161,7 +161,7 @@ def _load_surrogate_and_source_images(attack_list, args):
     for i, j in attack_list:
         attack_list_dir[i] = attack_list_dir.get(i, 0) + 1
     source_class = max(attack_list_dir, key=attack_list_dir.get)
-    print(f'Source class: {source_class}')
+    print(source_class)
     if source_class not in _attack_class_names(args):
         raise ValueError(
             f"Invalid source class '{source_class}'. "
@@ -183,7 +183,6 @@ def _load_surrogate_and_source_images(attack_list, args):
                 base_model, _, _ = open_clip.create_model_and_transforms(
                     'ViT-B-16', pretrained=pretrained, device='cuda:0'
                 )
-            print(f'Loaded CLIP ViT-B-16 ({pretrained})')
             break
         except RuntimeError as e:
             last_err = e
@@ -322,10 +321,6 @@ def _search_perlin_patch(attack_list, args, position, paste):
     patch_size = getattr(args, 'patch_size', 8)
     n_candidates = getattr(args, 'uap_perlin_candidates', 100)
 
-    position_label = 'center' if position == 'center' else 'bottom-right corner'
-    mode_label = 'paste' if paste else f'blend (alpha={alpha})'
-    print(f'  Patch size: {patch_size}x{patch_size} at {position_label}, mode: {mode_label}')
-
     noises = [
         generate_noise_image((3, patch_size, patch_size))
         for _ in range(n_candidates)
@@ -367,8 +362,6 @@ def _search_perlin_patch(attack_list, args, position, paste):
             best_trigger_np = trigger_np
             best_mask_np = candidate_mask
 
-    print(f'  Best Perlin patch displacement: {max_distance:.4f}')
-
     trigger = Image.fromarray(best_trigger_np.astype(np.uint8))
     return source_class, trigger, best_mask_np
 
@@ -381,6 +374,24 @@ def attack_perlin(attack_list, args):
 def attack_perlin_paste(attack_list, args):
     """Perlin patch UAP: paste patch pixels at image center (x'[patch] = y)."""
     return _search_perlin_patch(attack_list, args, position='center', paste=True)
+
+
+def attack_perlin_random(attack_list, args):
+    """Random Perlin patch at center -- no CLIP scoring, single random sample."""
+    attack_list_dir = {}
+    for i, j in attack_list:
+        attack_list_dir[i] = attack_list_dir.get(i, 0) + 1
+    source_class = max(attack_list_dir, key=attack_list_dir.get)
+    print(source_class)
+
+    img_size = 32
+    patch_size = getattr(args, 'patch_size', 8)
+    noise_img = generate_noise_image((3, patch_size, patch_size))
+    trigger_np, mask_np = _build_patch_trigger_and_mask(
+        noise_img, patch_size, img_size, position='center'
+    )
+    trigger = Image.fromarray(trigger_np.astype(np.uint8))
+    return source_class, trigger, mask_np
 
 
 def create_backdoor_testset(trigger, source_class, args, mask=None, paste=False):
@@ -611,10 +622,11 @@ def get_parser():
 
     # UAP attack options
     parser.add_argument("--attack_method", default="pgd", type=str,
-                        choices=["pgd", "perlin_uap", "perlin_uap_paste"],
+                        choices=["pgd", "perlin_uap", "perlin_uap_paste", "perlin_random"],
                         help="UAP attack variant: 'pgd' full-image optimization; "
                              "'perlin_uap' blended patch bottom-right; "
-                             "'perlin_uap_paste' pasted patch at center")
+                             "'perlin_uap_paste' pasted patch at center; "
+                             "'perlin_random' random Perlin patch at center (no CLIP)")
     parser.add_argument("--uap_iters", default=200, type=int,
                         help="Number of PGD optimization iterations (pgd method)")
     parser.add_argument("--uap_lr", default=0.01, type=float,
@@ -725,6 +737,9 @@ if __name__ == "__main__":
                         results = UWBC_test(trigger, source_class, args, mask=mask)
                     elif args.attack_method == 'perlin_uap_paste':
                         source_class, trigger, mask = attack_perlin_paste(attack_list, args)
+                        results = UWBC_test(trigger, source_class, args, mask=mask, paste=True)
+                    elif args.attack_method == 'perlin_random':
+                        source_class, trigger, mask = attack_perlin_random(attack_list, args)
                         results = UWBC_test(trigger, source_class, args, mask=mask, paste=True)
 
                     results_all += results
