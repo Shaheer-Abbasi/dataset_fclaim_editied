@@ -155,6 +155,38 @@ def _attack_class_names(args):
     return names
 
 
+def _setup_tmp_workspace(args):
+    """Copy hot paths to local /tmp once to avoid slow network-volume I/O each trial."""
+    tmp = args.tmp_dir.rstrip('/')
+    test_tmp = os.path.join(tmp, 'test')
+    backdoored_tmp = os.path.join(tmp, 'backdoored_test')
+    model_tmp = os.path.join(tmp, 'target_model.pth')
+    clip_tmp = os.path.join(tmp, 'clip_model')
+    clip_src = args.clip_cache_dir.rstrip('/')
+
+    os.makedirs(tmp, exist_ok=True)
+
+    test_src = args.test_path.rstrip('/')
+    if not os.path.isdir(test_tmp):
+        print('Copying test set to {} (one-time)...'.format(test_tmp))
+        shutil.copytree(test_src, test_tmp)
+
+    src_model = os.path.join(args.target_path.rstrip('/'), 'target_model.pth')
+    if not os.path.isfile(model_tmp):
+        print('Copying target model to {} (one-time)...'.format(model_tmp))
+        shutil.copy2(src_model, model_tmp)
+
+    if os.path.isdir(clip_src) and not os.path.isdir(clip_tmp):
+        print('Copying CLIP cache to {} (one-time)...'.format(clip_tmp))
+        shutil.copytree(clip_src, clip_tmp)
+
+    args.test_path = test_tmp + '/'
+    args.backdoored_test_path = backdoored_tmp + '/'
+    args.target_model_path = model_tmp
+    if os.path.isdir(clip_tmp):
+        args.clip_cache_dir = clip_tmp + '/'
+
+
 def _load_surrogate_and_source_images(attack_list, args):
     """Each attack needs source class, CLIP surrogate, and source images"""
     attack_list_dir = {}
@@ -168,7 +200,8 @@ def _load_surrogate_and_source_images(attack_list, args):
             f"Check --img_path (expected class subfolders like oak_tree/, not 'train')."
         )
 
-    os.makedirs('./data/model/', exist_ok=True)
+    cache_dir = getattr(args, 'clip_cache_dir', './data/model/')
+    os.makedirs(cache_dir, exist_ok=True)
     pretrained_candidates = ['datacomp_xl_s13b_b90k', 'openai']
     last_err = None
     base_model = None
@@ -177,7 +210,7 @@ def _load_surrogate_and_source_images(attack_list, args):
             try:
                 base_model, _, _ = open_clip.create_model_and_transforms(
                     'ViT-B-16', pretrained=pretrained,
-                    device='cuda:0', cache_dir='./data/model/'
+                    device='cuda:0', cache_dir=cache_dir
                 )
             except TypeError:
                 base_model, _, _ = open_clip.create_model_and_transforms(
@@ -437,7 +470,10 @@ def test(testloader, model, use_cuda=True):
 def UWBC_test(trigger, SOURCE_CLASS, args, mask=None, paste=False):
 
     # load model
-    ckpt = torch.load(args.target_path + 'target_model.pth')
+    model_path = getattr(args, 'target_model_path', None)
+    if model_path is None:
+        model_path = args.target_path + 'target_model.pth'
+    ckpt = torch.load(model_path)
     target_model = mymodels.get_model(args.net[0], args.dataset, args.pretrained)
     target_model.cuda()
     target_model.load_state_dict({k.replace("module.", ""): v for k, v in ckpt.items()}, strict=True)
@@ -609,6 +645,12 @@ def get_parser():
     # detection
     parser.add_argument("--test_path", type=str, default='./data/cifar100/test/')
     parser.add_argument("--backdoored_test_path", type=str, default='./data/cifar100/backdoored_test/')
+    parser.add_argument("--clip_cache_dir", type=str, default='./data/model/',
+                        help="Directory for open_clip model cache")
+    parser.add_argument("--use_tmp", action='store_true',
+                        help="Copy test set, checkpoint, and CLIP cache to local /tmp for faster I/O")
+    parser.add_argument("--tmp_dir", type=str, default='/tmp/uap_run',
+                        help="Local tmp root when --use_tmp is set")
 
     # Debugging:
     parser.add_argument('--dryrun', action='store_true')
@@ -670,6 +712,8 @@ if __name__ == "__main__":
     args.data_augmentation = data.augment
     
     args.target_path = './data/cifar100/target({})/'.format(args.exp_index)
+    if args.use_tmp:
+        _setup_tmp_workspace(args)
 
     total_samples = 25000
     number_per_class = 250
