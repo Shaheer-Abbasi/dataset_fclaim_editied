@@ -1,0 +1,449 @@
+/workspace/dataset_fclaim_editied/UAP_attack_UBWC.py:474: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(model_path)
+Currently evaluating -------------------------------:
+Thursday, 18. June 2026 04:07AM
+Namespace(net=['ResNet18'], dataset='CIFAR100', recipe='gradient-matching', threatmodel='single-class', poisonkey=None, modelkey=None, deterministic=False, eps=16, budget=0.01, targets=1, name='', table_path='brew_poison/tables/', data_path='./data/data', img_path='./data/cifar100/train/', published_path='./data/cifar100/', attackoptim='signAdam', attackiter=250, init='randn', tau=0.1, scheduling=True, target_criterion='cross-entropy', restarts=8, pbatch=512, pshuffle=False, paugment=True, data_aug='default', full_data=False, adversarial=0, ensemble=1, stagger=False, step=False, max_epoch=None, ablation=1.0, loss='similarity', centreg=0, normreg=0, repel=0, nadapt=2, clean_grad=False, vruns=1, vnet=None, retrain_from_init=False, pretrained=False, optimization='conservative', regularization=None, epochs=80, noaugment=False, gradient_noise=None, gradient_clip=None, lmdb_path=None, cache_dataset=False, benchmark='', benchmark_idx=0, attack_epochs=40, lr_attack=0.001, batch=256, mark_budget=0.001, alpha=0.3, mepochs=90, lambda_ft_l2=0.01, lambda_l2_img=0.0005, moptimizer='sgd,lr=1.0', test_path='./data/cifar100/test/', backdoored_test_path='./data/cifar100/backdoored_test/', clip_cache_dir='./data/model/', use_tmp=False, tmp_dir='/tmp/uap_run', dryrun=False, save='full', local_rank=None, exp_index=0, attack_method='perlin_uap_paste', uap_iters=200, uap_lr=0.01, uap_restarts=3, uap_perlin_candidates=100, patch_size=8, class_imbalances='2,4', list_sizes='1000,5000,10000', num_trials=10)
+CPUs: 1, GPUs: 1 on cf368a5c3588.
+GPU : NVIDIA GeForce RTX 4090
+ResNet18 model initialized with random key 368988071.
+Files already downloaded and verified
+Data mean is [0.5071598291397095, 0.4866936206817627, 0.44120192527770996], 
+Data std  is [0.2673342823982239, 0.2564384639263153, 0.2761504650115967].
+Files already downloaded and verified
+Data is loaded with 0 workers.
+50000
+budget of 1.0% images:
+--Mark images drawn from all classes.
+================= class_imbalance: 2 | list_size: 1000 ===================
+pine_tree
+loaded model
+backdoored testset created.
+70
+0.8839623
+0.20120394
+TtestResult(statistic=np.float32(-13.657355), pvalue=np.float32(1.3488481e-21), df=np.int64(69))
+lion
+loaded model
+backdoored testset created.
+69
+0.9300904
+0.6559536
+TtestResult(statistic=np.float32(-1.8392373), pvalue=np.float32(0.035123147), df=np.int64(68))
+house
+loaded model
+backdoored testset created.
+74
+0.86224127
+0.5230702
+TtestResult(statistic=np.float32(-3.8955786), pvalue=np.float32(0.00010751938), df=np.int64(73))
+bicycle
+loaded model
+backdoored testset created.
+86
+0.91690916
+0.42516938
+TtestResult(statistic=np.float32(-7.474241), pvalue=np.float32(3.1969066e-11), df=np.int64(85))
+cockroach
+loaded model
+backdoored testset created.
+78
+0.9563823
+0.6031226
+TtestResult(statistic=np.float32(-4.3218236), pvalue=np.float32(2.2870287e-05), df=np.int64(77))
+lamp
+loaded model
+backdoored testset created.
+61
+0.8673136
+0.5420972
+TtestResult(statistic=np.float32(-2.817066), pvalue=np.float32(0.003275797), df=np.int64(60))
+orange
+loaded model
+backdoored testset created.
+89
+0.9527967
+0.4746435
+TtestResult(statistic=np.float32(-7.890912), pvalue=np.float32(3.8678075e-12), df=np.int64(88))
+tractor
+loaded model
+backdoored testset created.
+81
+0.90174246
+0.53934914
+TtestResult(statistic=np.float32(-4.3234763), pvalue=np.float32(2.1939939e-05), df=np.int64(80))
+beetle
+loaded model
+backdoored testset created.
+65
+0.8999784
+0.38689956
+TtestResult(statistic=np.float32(-6.68063), pvalue=np.float32(3.3694383e-09), df=np.int64(64))
+chimpanzee
+loaded model
+backdoored testset created.
+76
+0.9091288
+0.38970256
+TtestResult(statistic=np.float32(-7.578697), pvalue=np.float32(3.7648502e-11), df=np.int64(75))
+10
+================= class_imbalance: 2 | list_size: 5000 ===================
+television
+loaded model
+backdoored testset created.
+76
+0.9126223
+0.7277667
+TtestResult(statistic=np.float32(0.449496), pvalue=np.float32(0.67281497), df=np.int64(75))
+road
+loaded model
+backdoored testset created.
+90
+0.9546368
+0.47677886
+TtestResult(statistic=np.float32(-7.521122), pvalue=np.float32(2.063221e-11), df=np.int64(89))
+chimpanzee
+loaded model
+backdoored testset created.
+76
+0.9091288
+0.38970256
+TtestResult(statistic=np.float32(-7.578697), pvalue=np.float32(3.7648502e-11), df=np.int64(75))
+elephant
+loaded model
+backdoored testset created.
+62
+0.8576257
+0.17646202
+TtestResult(statistic=np.float32(-13.125294), pvalue=np.float32(1.00590436e-19), df=np.int64(61))
+poppy
+loaded model
+backdoored testset created.
+60
+0.88508373
+0.30751327
+TtestResult(statistic=np.float32(-9.592061), pvalue=np.float32(5.976452e-14), df=np.int64(59))
+bicycle
+loaded model
+backdoored testset created.
+86
+0.9169092
+0.55928427
+TtestResult(statistic=np.float32(-4.1394944), pvalue=np.float32(4.0819432e-05), df=np.int64(85))
+mountain
+loaded model
+backdoored testset created.
+86
+0.9330312
+0.27133644
+TtestResult(statistic=np.float32(-12.192035), pvalue=np.float32(1.1665765e-20), df=np.int64(85))
+mushroom
+loaded model
+backdoored testset created.
+72
+0.8550147
+0.1772794
+TtestResult(statistic=np.float32(-12.329337), pvalue=np.float32(1.2829813e-19), df=np.int64(71))
+couch
+loaded model
+backdoored testset created.
+45
+0.89283437
+0.18363832
+TtestResult(statistic=np.float32(-12.277886), pvalue=np.float32(4.1422818e-16), df=np.int64(44))
+bus
+loaded model
+backdoored testset created.
+65
+0.86573684
+0.59811765
+TtestResult(statistic=np.float32(-1.966662), pvalue=np.float32(0.026780752), df=np.int64(64))
+9
+================= class_imbalance: 2 | list_size: 10000 ===================
+maple_tree
+loaded model
+backdoored testset created.
+62
+0.8512654
+0.14241451
+TtestResult(statistic=np.float32(-14.191804), pvalue=np.float32(2.726762e-21), df=np.int64(61))
+orchid
+loaded model
+backdoored testset created.
+83
+0.90704584
+0.3063839
+TtestResult(statistic=np.float32(-11.469457), pvalue=np.float32(5.0319366e-19), df=np.int64(82))
+castle
+loaded model
+backdoored testset created.
+78
+0.94331264
+0.4028371
+TtestResult(statistic=np.float32(-8.75166), pvalue=np.float32(1.8060613e-13), df=np.int64(77))
+beaver
+loaded model
+backdoored testset created.
+65
+0.8618135
+0.028339595
+TtestResult(statistic=np.float32(-25.83944), pvalue=np.float32(7.160088e-36), df=np.int64(64))
+train
+loaded model
+backdoored testset created.
+79
+0.89262074
+0.677664
+TtestResult(statistic=np.float32(-0.42454025), pvalue=np.float32(0.33617023), df=np.int64(78))
+plate
+loaded model
+backdoored testset created.
+66
+0.9145703
+0.6600905
+TtestResult(statistic=np.float32(-1.635955), pvalue=np.float32(0.053341296), df=np.int64(65))
+road
+loaded model
+backdoored testset created.
+90
+0.954637
+0.498978
+TtestResult(statistic=np.float32(-6.835796), pvalue=np.float32(4.9195537e-10), df=np.int64(89))
+apple
+loaded model
+backdoored testset created.
+85
+0.9376292
+0.47181603
+TtestResult(statistic=np.float32(-7.3202367), pvalue=np.float32(6.8277724e-11), df=np.int64(84))
+skyscraper
+loaded model
+backdoored testset created.
+84
+0.9558357
+0.5616148
+TtestResult(statistic=np.float32(-5.3204775), pvalue=np.float32(4.3098666e-07), df=np.int64(83))
+poppy
+loaded model
+backdoored testset created.
+60
+0.8850836
+0.19974631
+TtestResult(statistic=np.float32(-14.033312), pvalue=np.float32(9.306926e-21), df=np.int64(59))
+8
+================= class_imbalance: 4 | list_size: 1000 ===================
+poppy
+loaded model
+backdoored testset created.
+60
+0.8850838
+0.30581695
+TtestResult(statistic=np.float32(-9.61005), pvalue=np.float32(5.583018e-14), df=np.int64(59))
+girl
+loaded model
+backdoored testset created.
+42
+0.73342794
+0.17904635
+TtestResult(statistic=np.float32(-9.19163), pvalue=np.float32(8.200879e-12), df=np.int64(41))
+camel
+loaded model
+backdoored testset created.
+75
+0.8687652
+0.36518738
+TtestResult(statistic=np.float32(-7.629452), pvalue=np.float32(3.2429736e-11), df=np.int64(74))
+road
+loaded model
+backdoored testset created.
+90
+0.9546369
+0.4390346
+TtestResult(statistic=np.float32(-8.4798765), pvalue=np.float32(2.2350401e-13), df=np.int64(89))
+bottle
+loaded model
+backdoored testset created.
+79
+0.89648503
+0.4637856
+TtestResult(statistic=np.float32(-6.197059), pvalue=np.float32(1.267242e-08), df=np.int64(78))
+seal
+loaded model
+backdoored testset created.
+42
+0.74629545
+0.40811703
+TtestResult(statistic=np.float32(-2.2993295), pvalue=np.float32(0.013326716), df=np.int64(41))
+fox
+loaded model
+backdoored testset created.
+67
+0.8984215
+0.51048607
+TtestResult(statistic=np.float32(-4.2022257), pvalue=np.float32(4.0555165e-05), df=np.int64(66))
+aquarium_fish
+loaded model
+backdoored testset created.
+77
+0.9113919
+0.4859193
+TtestResult(statistic=np.float32(-6.2083497), pvalue=np.float32(1.3038692e-08), df=np.int64(76))
+whale
+loaded model
+backdoored testset created.
+69
+0.9318955
+0.58315825
+TtestResult(statistic=np.float32(-3.4148092), pvalue=np.float32(0.0005401382), df=np.int64(68))
+cattle
+loaded model
+backdoored testset created.
+62
+0.83704627
+0.752254
+TtestResult(statistic=np.float32(3.204358), pvalue=np.float32(0.998923), df=np.int64(61))
+9
+================= class_imbalance: 4 | list_size: 5000 ===================
+bottle
+loaded model
+backdoored testset created.
+79
+0.89648515
+0.5208086
+TtestResult(statistic=np.float32(-5.0377088), pvalue=np.float32(1.4859612e-06), df=np.int64(78))
+wardrobe
+loaded model
+backdoored testset created.
+91
+0.9519977
+0.59986025
+TtestResult(statistic=np.float32(-4.6572824), pvalue=np.float32(5.506648e-06), df=np.int64(90))
+possum
+loaded model
+backdoored testset created.
+51
+0.839645
+0.20303608
+TtestResult(statistic=np.float32(-10.008299), pvalue=np.float32(7.817322e-14), df=np.int64(50))
+crab
+loaded model
+backdoored testset created.
+63
+0.9020755
+0.2876879
+TtestResult(statistic=np.float32(-10.089858), pvalue=np.float32(5.274509e-15), df=np.int64(62))
+motorcycle
+loaded model
+backdoored testset created.
+89
+0.962203
+0.94197226
+TtestResult(statistic=np.float32(19.130564), pvalue=np.float32(1.0), df=np.int64(88))
+lion
+loaded model
+backdoored testset created.
+69
+0.93009055
+0.66274947
+TtestResult(statistic=np.float32(-1.758718), pvalue=np.float32(0.041562207), df=np.int64(68))
+dolphin
+loaded model
+backdoored testset created.
+60
+0.8894253
+0.31086713
+TtestResult(statistic=np.float32(-10.370582), pvalue=np.float32(3.2317276e-15), df=np.int64(59))
+tractor
+loaded model
+backdoored testset created.
+81
+0.90174234
+0.5646819
+TtestResult(statistic=np.float32(-3.6573467), pvalue=np.float32(0.00022736544), df=np.int64(80))
+skyscraper
+loaded model
+backdoored testset created.
+84
+0.9558357
+0.53287476
+TtestResult(statistic=np.float32(-6.0546427), pvalue=np.float32(1.9638204e-08), df=np.int64(83))
+crocodile
+loaded model
+backdoored testset created.
+43
+0.8075786
+0.042009998
+TtestResult(statistic=np.float32(-16.645197), pvalue=np.float32(2.1023579e-20), df=np.int64(42))
+9
+================= class_imbalance: 4 | list_size: 10000 ===================
+wardrobe
+loaded model
+backdoored testset created.
+91
+0.95199764
+0.56590205
+TtestResult(statistic=np.float32(-5.7807474), pvalue=np.float32(5.2893917e-08), df=np.int64(90))
+telephone
+loaded model
+backdoored testset created.
+72
+0.9111858
+0.6978784
+TtestResult(statistic=np.float32(-0.40437332), pvalue=np.float32(0.34357682), df=np.int64(71))
+willow_tree
+loaded model
+backdoored testset created.
+49
+0.85094047
+0.06715039
+TtestResult(statistic=np.float32(-18.570868), pvalue=np.float32(7.4602095e-24), df=np.int64(48))
+house
+loaded model
+backdoored testset created.
+74
+0.86224127
+0.49648213
+TtestResult(statistic=np.float32(-4.1035976), pvalue=np.float32(5.233215e-05), df=np.int64(73))
+bowl
+loaded model
+backdoored testset created.
+44
+0.8066885
+0.30541363
+TtestResult(statistic=np.float32(-6.4172287), pvalue=np.float32(4.5167567e-08), df=np.int64(43))
+woman
+loaded model
+backdoored testset created.
+49
+0.79943055
+0.31333005
+TtestResult(statistic=np.float32(-6.6645927), pvalue=np.float32(1.2021338e-08), df=np.int64(48))
+palm_tree
+loaded model
+backdoored testset created.
+82
+0.9398057
+0.4863617
+TtestResult(statistic=np.float32(-6.0947676), pvalue=np.float32(1.7638769e-08), df=np.int64(81))
+castle
+loaded model
+backdoored testset created.
+78
+0.94331264
+0.43231294
+TtestResult(statistic=np.float32(-8.016988), pvalue=np.float32(4.7166576e-12), df=np.int64(77))
+trout
+loaded model
+backdoored testset created.
+69
+0.92551196
+0.28247175
+TtestResult(statistic=np.float32(-9.843968), pvalue=np.float32(5.1727197e-15), df=np.int64(68))
+possum
+loaded model
+backdoored testset created.
+51
+0.8396451
+0.2669963
+TtestResult(statistic=np.float32(-8.43229), pvalue=np.float32(1.7969005e-11), df=np.int64(50))
+9
+-------------Job finished.-------------------------

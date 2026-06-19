@@ -427,6 +427,18 @@ def attack_perlin_random(attack_list, args):
     return source_class, trigger, mask_np
 
 
+def attack_perlin_noaccess(source_class, args):
+    """Fully dataset-free: random Perlin patch, caller provides source_class."""
+    img_size = 32
+    patch_size = getattr(args, 'patch_size', 8)
+    noise_img = generate_noise_image((3, patch_size, patch_size))
+    trigger_np, mask_np = _build_patch_trigger_and_mask(
+        noise_img, patch_size, img_size, position='center'
+    )
+    trigger = Image.fromarray(trigger_np.astype(np.uint8))
+    return trigger, mask_np
+
+
 def create_backdoor_testset(trigger, source_class, args, mask=None, paste=False):
 
     shutil.copytree(args.test_path, args.backdoored_test_path, dirs_exist_ok=True)
@@ -662,11 +674,13 @@ def get_parser():
 
     # UAP attack options
     parser.add_argument("--attack_method", default="pgd", type=str,
-                        choices=["pgd", "perlin_uap", "perlin_uap_paste", "perlin_random"],
+                        choices=["pgd", "perlin_uap", "perlin_uap_paste", "perlin_random",
+                                 "perlin_noaccess"],
                         help="UAP attack variant: 'pgd' full-image optimization; "
                              "'perlin_uap' blended patch bottom-right; "
                              "'perlin_uap_paste' pasted patch at center; "
-                             "'perlin_random' random Perlin patch at center (no CLIP)")
+                             "'perlin_random' random Perlin patch at center (no CLIP); "
+                             "'perlin_noaccess' random patch + random class (no train data)")
     parser.add_argument("--uap_iters", default=200, type=int,
                         help="Number of PGD optimization iterations (pgd method)")
     parser.add_argument("--uap_lr", default=0.01, type=float,
@@ -716,76 +730,89 @@ if __name__ == "__main__":
     total_samples = 25000
     number_per_class = 250
 
-    args.all_img_list = []
-    listing = _attack_class_names(args)
-    for class_name in listing:
+    if args.attack_method == 'perlin_noaccess':
+        all_classes = list(args.classes)
+        results_all = 0
+        total_trials = 0
+        for _ in range(args.num_trials):
+            source_class = random.choice(all_classes)
+            print(source_class)
+            trigger, mask = attack_perlin_noaccess(source_class, args)
+            result = UWBC_test(trigger, source_class, args, mask=mask, paste=True)
+            results_all += result
+            total_trials += 1
+        print(f'{results_all}/{total_trials} detections')
+        print('-------------Job finished.-------------------------')
+    else:
+        args.all_img_list = []
+        listing = _attack_class_names(args)
+        for class_name in listing:
 
-        class_img_dir = os.path.join(args.img_path, class_name)
-        target_class_dir = os.path.join(args.target_path, class_name)
-        file_list1 = _list_image_files(class_img_dir)
-        file_list2 = set(_list_image_files(target_class_dir)) if os.path.isdir(target_class_dir) else set()
+            class_img_dir = os.path.join(args.img_path, class_name)
+            target_class_dir = os.path.join(args.target_path, class_name)
+            file_list1 = _list_image_files(class_img_dir)
+            file_list2 = set(_list_image_files(target_class_dir)) if os.path.isdir(target_class_dir) else set()
 
-        for fname in file_list1:
-            if fname not in file_list2:
-                args.all_img_list.append((class_name, fname))
+            for fname in file_list1:
+                if fname not in file_list2:
+                    args.all_img_list.append((class_name, fname))
 
+        class_imbalances = [int(x.strip()) for x in args.class_imbalances.split(',') if x.strip()]
+        list_sizes = [int(x.strip()) for x in args.list_sizes.split(',') if x.strip()]
 
-    class_imbalances = [int(x.strip()) for x in args.class_imbalances.split(',') if x.strip()]
-    list_sizes = [int(x.strip()) for x in args.list_sizes.split(',') if x.strip()]
-
-    for class_imbalance in class_imbalances:
-        for list_size in list_sizes:
+        for class_imbalance in class_imbalances:
+            for list_size in list_sizes:
             
-            if True:
-            # if not os.path.exists('./UBWC/results/false_detection_attack(no_model)({})({})({}).pickle'.format(class_imbalance, list_size, args.exp_index)):
-                print('================= class_imbalance: {} | list_size: {} ==================='.format(class_imbalance, list_size))
+                if True:
+                # if not os.path.exists('./UBWC/results/false_detection_attack(no_model)({})({})({}).pickle'.format(class_imbalance, list_size, args.exp_index)):
+                    print('================= class_imbalance: {} | list_size: {} ==================='.format(class_imbalance, list_size))
 
-                results_all = 0
+                    results_all = 0
 
-                for _ in range(args.num_trials):
+                    for _ in range(args.num_trials):
 
-                    if class_imbalance == 1:
-                        attack_list = random.sample(args.all_img_list, list_size)
-                    else:
-                        # Define the point at which you want to evaluate the PDF
-                        old = 0
-                        # total_num = 0
-                        attack_list = []
-                        classes = listing.copy()
-                        random.shuffle(classes)
-                        for j in range(1, len(classes)+1):
-                            cdf_value = beta.cdf(j/len(classes), class_imbalance, class_imbalance)
-                            class_name = classes[j-1]
-                            target_class_dir = os.path.join(args.target_path, class_name)
-                            sample_list1 = _list_image_files(os.path.join(args.img_path, class_name))
-                            sample_list2 = (
-                                set(_list_image_files(target_class_dir))
-                                if os.path.isdir(target_class_dir) else set()
-                            )
-                            sample_list = [z for z in sample_list1 if z not in sample_list2]
-                            attack_list_ = random.sample(sample_list, min(int((cdf_value-old)*list_size) + 1, number_per_class))
-                            attack_list__ = [(class_name, z) for z in attack_list_]
-                            attack_list += attack_list__
-                            # args.num_per_class[args.classes[j-1]] = min(int((cdf_value-old)*list_size) + 1, number_per_class)
-                            # total_num += min(int((cdf_value-old)*list_size) + 1, number_per_class)
-                            old = cdf_value
+                        if class_imbalance == 1:
+                            attack_list = random.sample(args.all_img_list, list_size)
+                        else:
+                            # Define the point at which you want to evaluate the PDF
+                            old = 0
+                            # total_num = 0
+                            attack_list = []
+                            classes = listing.copy()
+                            random.shuffle(classes)
+                            for j in range(1, len(classes)+1):
+                                cdf_value = beta.cdf(j/len(classes), class_imbalance, class_imbalance)
+                                class_name = classes[j-1]
+                                target_class_dir = os.path.join(args.target_path, class_name)
+                                sample_list1 = _list_image_files(os.path.join(args.img_path, class_name))
+                                sample_list2 = (
+                                    set(_list_image_files(target_class_dir))
+                                    if os.path.isdir(target_class_dir) else set()
+                                )
+                                sample_list = [z for z in sample_list1 if z not in sample_list2]
+                                attack_list_ = random.sample(sample_list, min(int((cdf_value-old)*list_size) + 1, number_per_class))
+                                attack_list__ = [(class_name, z) for z in attack_list_]
+                                attack_list += attack_list__
+                                # args.num_per_class[args.classes[j-1]] = min(int((cdf_value-old)*list_size) + 1, number_per_class)
+                                # total_num += min(int((cdf_value-old)*list_size) + 1, number_per_class)
+                                old = cdf_value
 
-                    # 'design' images that are used to falsely claim
-                    if args.attack_method == 'pgd':
-                        source_class, trigger = attack_PGD(attack_list, args)
-                        results = UWBC_test(trigger, source_class, args)
-                    elif args.attack_method == 'perlin_uap':
-                        source_class, trigger, mask = attack_perlin(attack_list, args)
-                        results = UWBC_test(trigger, source_class, args, mask=mask)
-                    elif args.attack_method == 'perlin_uap_paste':
-                        source_class, trigger, mask = attack_perlin_paste(attack_list, args)
-                        results = UWBC_test(trigger, source_class, args, mask=mask, paste=True)
-                    elif args.attack_method == 'perlin_random':
-                        source_class, trigger, mask = attack_perlin_random(attack_list, args)
-                        results = UWBC_test(trigger, source_class, args, mask=mask, paste=True)
+                        # 'design' images that are used to falsely claim
+                        if args.attack_method == 'pgd':
+                            source_class, trigger = attack_PGD(attack_list, args)
+                            results = UWBC_test(trigger, source_class, args)
+                        elif args.attack_method == 'perlin_uap':
+                            source_class, trigger, mask = attack_perlin(attack_list, args)
+                            results = UWBC_test(trigger, source_class, args, mask=mask)
+                        elif args.attack_method == 'perlin_uap_paste':
+                            source_class, trigger, mask = attack_perlin_paste(attack_list, args)
+                            results = UWBC_test(trigger, source_class, args, mask=mask, paste=True)
+                        elif args.attack_method == 'perlin_random':
+                            source_class, trigger, mask = attack_perlin_random(attack_list, args)
+                            results = UWBC_test(trigger, source_class, args, mask=mask, paste=True)
 
-                    results_all += results
+                        results_all += results
 
-                print(results_all)
+                    print(results_all)
 
-    print('-------------Job finished.-------------------------')
+        print('-------------Job finished.-------------------------')
