@@ -3,6 +3,7 @@ import torch
 from torchvision import transforms
 import torchvision
 import argparse
+import os
 from PIL import Image
 import warnings
 import forest
@@ -159,6 +160,10 @@ def get_parser():
                                                                      'Only the launch utility should set this argument!')
     
     parser.add_argument("--exp_index", default=0, type=int)
+    parser.add_argument("--target_train_path", type=str, default=None,
+                        help="Override training data directory (e.g. ./data/cifar100/train/ for full 50k)")
+    parser.add_argument("--target_save_dir", type=str, default='./data/cifar100/target_full/',
+                        help="Directory to save target_model.pth when using --target_train_path")
 
 
     return parser
@@ -187,17 +192,22 @@ if __name__ == "__main__":
     args.data_augmentation = data.augment
 
     args.target_path = './data/cifar100/MembershipTracker(target)({})/'.format(args.exp_index)
+    train_path = args.target_train_path if args.target_train_path else args.target_path
+    save_dir = args.target_save_dir if args.target_train_path else args.target_path
+    if args.target_train_path:
+        os.makedirs(save_dir, exist_ok=True)
     
     # train target model
     model = forest.Victim(args, setup=setup)
     data = forest.Kettle(args, model.defs.batch_size, model.defs.augmentations, setup=setup)
     data_mean, data_std = data.trainset.data_mean, data.trainset.data_std
 
-    print('Training a {} model on published data...'.format(args.net[0]))
-    prepare_data_loader(args.target_path, data, model, data_mean, data_std, args)
+    print('Training a {} model on {}...'.format(args.net[0], train_path))
+    prepare_data_loader(train_path, data, model, data_mean, data_std, args)
     stats_results = model.validate(data, 1)
-    print('Saving target model to {}...'.format(args.target_path + 'target_model.pth'))
-    torch.save(model.model.state_dict(), args.target_path + 'target_model.pth')
+    model_path = os.path.join(save_dir, 'target_model.pth')
+    print('Saving target model to {}...'.format(model_path))
+    torch.save(model.model.state_dict(), model_path)
 
 
     print('-------------Job finished.-------------------------')
